@@ -6,7 +6,8 @@ import ply.lex as lex
 reserved = {
     'if' : 'IF',
     'then' : 'THEN',
-    'else' : 'ELSE'
+    'else' : 'ELSE',
+    'while': 'WHILE',
 }
 
 # List of token names.   This is always required
@@ -17,9 +18,10 @@ tokens = [
     'NE',
     'GE',
     'GT',
+    'STRING',
     'ID',
     'NUMBER',
-    'RELOP'
+    'RELOP',
 ] + list(reserved.values())
 
 # A string containing ignored characters (spaces, tabs and newline)
@@ -32,7 +34,7 @@ def t_LE(t):
     return t
 
 def t_NE(t):
-    r'<>'
+    r'!='
     t.type = 'RELOP'
     t.value = 'NE'
     return t
@@ -56,13 +58,18 @@ def t_GT(t):
     return t
 
 def t_EQ(t):
-    r'='
+    r'=='
     t.type = 'RELOP'
     t.value = 'EQ'
     return t
 
+def t_STRING(t):
+    r'\"([a-zA-Z0-9\_])*\"'
+    t.type = 'STRING'
+    return t
+
 def t_ID(t):
-    r'[a-zA-Z][a-zA-Z0-9]*'
+    r'[a-zA-Z\_][a-zA-Z0-9\_]*'
     t.type = reserved.get(t.value,'ID') # Check for reserved words
     return t
 
@@ -99,5 +106,5 @@ class Ex351Lexer:
 
 if __name__ == '__main__':
     lex = Ex351Lexer()
-    lex.setData("if x then 3 <= 4 else 20 >= 1")
+    lex.setData("while if _x then 3 < 4 else 20 == \"ola\"")
     print(lex.tokenize())
