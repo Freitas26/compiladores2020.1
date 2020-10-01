@@ -21,7 +21,7 @@ tokens = [
     'STRING',
     'ID',
     'NUMBER',
-    'RELOP',
+    'RELOP', 
 ] + list(reserved.values())
 
 # A string containing ignored characters (spaces, tabs and newline)
@@ -106,5 +106,6 @@ class Ex351Lexer:
 
 if __name__ == '__main__':
     lex = Ex351Lexer()
-    lex.setData("while if _x then 3 < 4 else 20 == \"ola\"")
+    # lex.setData("if")
+    lex.setData("if x then 3 <= 4 else 20 >= 1")
     print(lex.tokenize())
