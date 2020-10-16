@@ -48,6 +48,7 @@ class Grammar:
         self.pred_parsing_trace = []
         self.pp = pprint.PrettyPrinter()
         self.first_computed = False
+        self.follow_computed = False
     
     def getSymbols(self):
         symbols = self.non_terminals.copy()
@@ -82,17 +83,31 @@ class Grammar:
             x_1 = w[0]
             # "Add to FIRST(X_1 X_2 ... X_n) all non-epsilon symbols of
             # FIRST(X_1)."
-
+            first_w.update(self.first_tab[x_1])
+            if 'epsilon' in first_w:
+                first_w.discard('epsilon')
             ### Do your magic!
 
             # Also add the non-epsilon symbols of FIRST(X_2), if epsilon is in
             # FIRST(X_1), and so on until X_n.
-
+            size = len(w)
+            for i in range(1, size):
+                early = w[i - 1]
+                current = w[i]
+                if 'epsilon' in self.first_tab[early] and 'epsilon' not in self.first_tab[current]:
+                    first_w.update(self.first_tab[current])
             ### Do your magic!
             
             # Finally, add epsilon to FIRST(X_1 X_2 ... X_n) if for all i
             # epsilon \in FIRST(X_i).
 
+            add_epsilon = True
+            for current_x in w:
+                if 'epsilon' not in self.first_tab[current_x]:
+                    add_epsilon = False
+                    break
+            if add_epsilon:
+                first_w.add('epsilon')
             ### Do your magic!
             
             return first_w
@@ -119,6 +134,9 @@ class Grammar:
                     break
                 # We must first calculate FIRST(y_1) before
                 # use it.
+                if s == y_1 :
+                    continue
+
                 if self.first_tab[y_1] == set():
                     self.first(y_1)
                 # FIRST(y_1) \subseteq FIRST(s)    
@@ -139,7 +157,11 @@ class Grammar:
                     # epsilon \in FISRT(y_j), for every 1 <= j <= i.
                     # However, we only reach j if every k 1 <= k < j
                     # has been reached before.
-
+                    if 'epsilon' in self.first_tab[y_ant]:
+                        if self.first_tab[y_i] == set():
+                            self.first(y_i)
+                        for x in self.first_tab[y_i]:
+                            self.first_tab[s].add(x)
                     ### Do your magic!
 
                     
@@ -185,7 +207,7 @@ class Grammar:
         '''
         Traces the execution of the algorithm for calculating FOLLOW.
         '''
-        if not follow.issubset(self.follow_tab[symb]):
+        if not follow in self.follow_tab[symb]:
             self.follow_trace.append("Added " + str(follow) + " to FOLLOW(" + str(symb) + ") " + \
                                      "while processing rule " + str(symb) + " -> " +  ''.join(rhs))
 
@@ -203,8 +225,15 @@ class Grammar:
         # To compute FOLLOW(A), for all non terminals A,
         # apply the following rules until nothing can be
         # added to any FOLLOW set.
+
         while True:
-            ### Do your magic!
+            origin = self.follow_tab_size()
+            for non_term in self.non_terminals:
+                self.follow(non_term)
+            self.follow_computed = True
+            if origin == self.follow_tab_size():
+                break
+
             pass
 
             
@@ -221,18 +250,28 @@ class Grammar:
                     if beta != ():
                         # If there is a production A -> alpha􏰐B beta then everything in
                         # FIRST(beta),􏰚except epsilon, is in FOLLOW(B).
+                        for item in self.first_tab[beta[0]]:
+                            if item != "epsilon":
+                                self.follow_log(B, item, rhs)
+                                self.follow_tab[B].add(item)
                         
                         ### Do your magic!
 
                         # If there is a production A -> alpha B beta
                         # where FIRST(beta) contains epsilon, then FOLLOW(A) \subset FOLLOW(B) 􏰛􏰂
+                        if "epsilon" in self.first_tab[beta[0]]:
+                            for item in self.follow_tab[s]:
+                                self.follow_log(B, item, rhs)
+                                self.follow_tab[B].add(item)
 
                         ### Do your magic! 
                         pass
                     else:
                         # If there is a production A -> alpha B
                         # then FOLLOW(A) \subset FOLLOW(B) 􏰛􏰂
-
+                        for item in self.follow_tab[s]:
+                            self.follow_log(B, item, rhs)
+                            self.follow_tab[B].add(item)
                         ### Do your magic!
                         pass
     def compute_pred_parsing_tab(self):
@@ -248,13 +287,16 @@ class Grammar:
                 # is in FOLLOW(A), add A -> alpha to M[A, $] as well.
                 if alpha == ("epsilon",) or \
                    (alpha != ("epsilon",) and ("epsilon" in self.firstW(alpha))):
-
+                    for b in self.follow_tab[A]:
+                        self.pred_parsing_tab[A][b].append(A + " -> "+ "".join(alpha))
                     ### Do your magic!
 
                 else:
                     # For each terminal a in FIRST(alpha), 
                     # add A -> alpha to M[A, a]
 
+                    for a in self.firstW(alpha):
+                        self.pred_parsing_tab[A][a].append(A + " -> "+"".join(alpha))
                     ### Do your magic!
                     
     def print_pred_parsing_tab(self):
