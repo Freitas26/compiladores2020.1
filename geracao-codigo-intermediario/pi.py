@@ -139,6 +139,52 @@ class Exp(Statement):
                             str(self) + ": " + "Operator is not binary.")
 
 
+class ArrInt(Statement):
+    def __init__(self, l):
+        if isinstance(l, list):
+            Statement.__init__(self, l)
+        else:
+            raise IllFormed(self, l)
+
+class ArrSize(Exp):
+    def __init(self, e):
+        if isinstance(e, ArrInt) or isinstance(e, Id):
+            Exp.__init__(self, e)
+        else:
+            raise IllFormed(self, e)
+
+class ArrIndex(Exp):
+    def __init__(self,idn, e):
+        if isinstance(idn, Id):
+            if isinstance(e, Exp):
+                Exp.__init__(self, idn, e)
+            else:
+                raise IllFormed(self, e)
+        else:
+            raise IllFormed(self, idn)
+
+class Concat(Exp):
+    def __init__(self, l, e):
+        if isinstance(l, Exp) or isinstance(l, ArrInt):
+            if isinstance(e, Exp):
+                Exp.__init__(self, l, e)
+            else:
+                raise IllFormed(self, e)
+        else:
+            raise IllFormed(self, l)
+
+class ArrAppend(Exp):
+    def __init__(self, l1, l2):
+        if isinstance(l1, Exp) or isinstance(l1, ArrInt):
+            if isinstance(l2, Exp) or isinstance(l2, ArrInt):
+                Exp.__init__(self, l1, l2)
+            else:
+                raise IllFormed(self, l2)
+        else:
+            raise IllFormed(self, l2)
+
+
+
 class ArithExp(Exp):
     pass
 
@@ -156,7 +202,7 @@ class Num(ArithExp):
             ret = str(self.num())
         return ret
 
-        
+
     def num(self):
         return self.operand(0)
 
@@ -317,6 +363,11 @@ class ExpKW():
     AND = "#AND"
     OR = "#OR"
     NOT = "#NOT"
+    IDX = "#IDX"
+    APPEND = "#APPEND"
+    CONCAT = "CONCAT"
+    LASG = "LASG"
+    SIZE = "SIZE"
 
 class ExpPiAut(PiAutomaton):
 
@@ -529,11 +580,83 @@ class ExpPiAut(PiAutomaton):
         self.pushCnt(ExpKW.NOT)
         self.pushCnt(e)
 
-
     def __evalNotKW(self):
         v = self.popVal()
         self.pushVal(not v)
 
+    def __evalArrInt(self, e):
+        f = e.operand(0)
+        self.pushVal(f)
+
+    def __evalArrAppend(self, e):
+        l1 = e.operand(0)
+        l2  = e.operand(1)
+        self.pushCnt(ExpKW.APPEND)
+        self.pushCnt(l1)
+        self.pushCnt(l2)
+
+    def __evalArrAppendKW(self):
+        l1 = self.popVal()
+        l2 = self.popVal()
+        self.pushVal(l1 + l2)
+
+
+    def __evalConcat(self, e):
+        l = e.operand(0)
+        v = e.operand(1)
+        self.pushCnt(ExpKW.CONCAT)
+        self.pushCnt(l)
+        self.pushCnt(v)
+
+    def __evalConcatKW(self):
+        l = self.popVal()
+        e = self.popVal()
+        nl = l.copy()
+        nl.append(Num(e))
+        self.pushVal(nl)
+
+    def __evalArrIndex(self, e):
+        idn = e.operand(0)
+        idx = e.operand(1)
+        self.pushCnt(ExpKW.IDX)
+        self.pushCnt(idn)
+        self.pushCnt(idx)
+
+    def __evalArrIndexKW(self):
+        l = self.popVal()
+        idx = self.popVal()
+        self.pushVal(l[idx])
+
+    def __evalArrSize(self, e):
+        l = e.operand(0)
+        self.pushCnt(ExpKW.SIZE)
+        self.pushCnt(l)
+
+    def __evalArrSizeKW(self):
+        l = self.popVal()
+        self.pushVal(len(l))
+
+    def __evalArrAssign(self, c):
+        idn = c.operand(0)
+        idx = c.operand(1)
+        e = c.operand(2)
+        self.pushVal(idn.id())
+        self.pushVal(idx)
+        self.pushCnt(ExpKW.LASG)
+        self.pushCnt(e)
+
+    def __evalArrAssignKW(self):
+        v = self.popVal()
+        idx = self.popVal()
+        idn = self.popVal()
+        l = self.getBindable(idn)
+        sto = self.sto()
+        if isinstance(idx, Id):
+            aux = self.getBindable(idx.id())
+            idx = sto[aux]
+        nl = sto[l]
+        nl[idx] = Num(v)
+        self.updateStore(l, nl)
 
     def eval(self):
         e = self.popCnt()
@@ -589,6 +712,28 @@ class ExpPiAut(PiAutomaton):
             self.__evalNot(e)
         elif e == ExpKW.NOT:
             self.__evalNotKW()
+        elif isinstance(e, ArrInt):
+            self.__evalArrInt(e)
+        elif isinstance(e, ArrIndex):
+            self.__evalArrIndex(e)
+        elif e == ExpKW.IDX:
+            self.__evalArrIndexKW()
+        elif isinstance(e, ArrAppend):
+            self.__evalArrAppend(e)
+        elif e == ExpKW.APPEND:
+            self.__evalArrAppendKW()
+        elif isinstance(e, Concat):
+            self.__evalConcat(e)
+        elif e == ExpKW.CONCAT:
+            self.__evalConcatKW()
+        elif isinstance(e, ArrAssign):
+            self.__evalArrAssign(e)
+        elif e == ExpKW.LASG:
+            self.__evalArrAssignKW()
+        elif isinstance(e, ArrSize):
+            self.__evalArrSize(e)
+        elif e == ExpKW.SIZE:
+            self.__evalArrSizeKW()
         else:
             raise EvaluationError( \
                 "Don't know how to evaluate " + str(e) + " of type " + str(type(e)) + "." + \
@@ -597,7 +742,7 @@ class ExpPiAut(PiAutomaton):
 #
 # Commands
 #
-        
+
 class Cmd(Statement):
     pass
 
@@ -618,7 +763,7 @@ class Id(ArithExp, BoolExp):
 class Print(Cmd):
 
     def __init__(self, e):
-        if isinstance(e, Exp):
+        if isinstance(e, Exp) or  isinstance(e, ArrInt) :
             Cmd.__init__(self, e)
         else:
             raise IllFormed(self, e)
@@ -626,11 +771,24 @@ class Print(Cmd):
     def exp(self):
         return self.operand(0)
 
+class ArrAssign(Cmd):
+    def __init__(self, idn, idx, e):
+        if isinstance(idn, Id):
+            if isinstance(idx, Exp):
+                if isinstance(e, Exp):
+                    Cmd.__init__(self, idn, idx, e)
+                else:
+                    raise IllFormed(self, e)
+            else:
+                raise IllFormed(self, idx)
+        else:
+            raise IllFormed(self, idn)
+
 class Assign(Cmd):
 
     def __init__(self, i, e):
         if isinstance(i, Id):
-            if isinstance(e, Exp):
+            if isinstance(e, Exp) or isinstance(e, ArrInt):
                 Cmd.__init__(self, i, e)
             else:
                 raise IllFormed(self, e)
@@ -666,7 +824,7 @@ class Cond(Cmd):
     def __init__(self, be, c1, c2):
         if isinstance(be, BoolExp):
             if isinstance(c1, Cmd):
-                if isinstance(c2, Cmd):                
+                if isinstance(c2, Cmd):
                     Cmd.__init__(self, be, c1, c2)
                 else:
                     raise IllFormed(self, c2)
@@ -716,7 +874,7 @@ class CmdKW:
     ASSIGN = "#ASSIGN"
     LOOP   = "#LOOP"
     COND   = "#COND"
-    PRINT  = "#PRINT" 
+    PRINT  = "#PRINT"
 
 class CmdPiAut(ExpPiAut):
 
@@ -765,7 +923,7 @@ class CmdPiAut(ExpPiAut):
 
     def __emmit(self, e):
         self["out"].append(e)
-        
+
     def __evalPrint(self, c):
         e = c.exp()
         self.pushCnt(CmdKW.PRINT)
@@ -774,7 +932,7 @@ class CmdPiAut(ExpPiAut):
     def __evalPrintKW(self):
         v = self.popVal()
         self.__emmit(v)
-        
+
     def __evalAssign(self, c):
         i = c.lvalue()
         e = c.rvalue()
@@ -810,8 +968,8 @@ class CmdPiAut(ExpPiAut):
         if t:
             self.pushCnt(c.then_branch())
         else:
-            self.pushCnt(c.else_branch())            
-        
+            self.pushCnt(c.else_branch())
+
     def __evalLoop(self, c):
         be = c.cond()
         bl = c.body()
@@ -871,7 +1029,7 @@ class CmdPiAut(ExpPiAut):
 #
 # Declarations
 #
-            
+
 class Dec(Statement):
     pass
 
@@ -885,7 +1043,7 @@ class Bind(Dec):
                 i = args[0]
                 e = args[1]
                 if isinstance(i, Id):
-                    if isinstance(e, Exp):
+                    if isinstance(e, Exp) or isinstance(e, ArrInt):
                         Dec.__init__(self, i, e)
                     else:
                         raise IllFormed(self, e)
@@ -903,7 +1061,7 @@ class Bind(Dec):
 
 class Ref(Exp):
     def __init__(self, e):
-        if isinstance(e, Exp):
+        if isinstance(e, Exp) or isinstance(e, ArrInt):
             Exp.__init__(self, e)
         else:
             raise IllFormed(self, e)
@@ -1292,7 +1450,6 @@ class AbsPiAut(DecPiAut):
         reobjectifyed. Thus, to avoid pi-IRfication and reevaluatuation of the
         environment we manipulate it at the object level, which is dangerous but
         seems to be correct.
-
         This function evaluates non-recursive funcntions with single parameter expressions.
         '''
         # if not isinstance(c, Call):    # c must be a Call object
@@ -1422,7 +1579,6 @@ class RecPiAut(AbsPiAut):
         reobjectifyed. Thus, to avoid pi-IRfication and reevaluatuation of the
         environment we manipulate it at the object level, which is dangerous but
         seems to be correct.
-
         There is only support for one-parameter expressions in actuals.
         '''
         #if not isinstance(c, Call):    # c must be a Call object

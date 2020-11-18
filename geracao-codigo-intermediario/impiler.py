@@ -17,12 +17,33 @@ class Impiler(object):
     def un_exp(self, ast):
         if ast.op == "not":
             return pi.Not(ast.e)
+        if ast.op == "#":
+            return pi.ArrSize(ast.e)
+
+    def array_int(self, ast):
+        if isinstance(ast, tuple):
+            return pi.ArrInt([])
+        if isinstance(ast.e, list):
+            return pi.ArrInt(ast.e)
+        return pi.ArrInt([ast.e])
+
+    def array_index(self, ast):
+        return pi.ArrIndex(ast.idn, ast.e)
+
+    def append(self, ast):
+        return pi.ArrAppend(ast.l1, ast.l2)
+
+    def array_assign(self, ast):
+        return pi.ArrAssign(ast.idn, ast.idx, ast.e)
+
         
     def bin_exp(self, ast):
         if ast.op == "+":
             return pi.Sum(ast.e1, ast.e2)
         elif ast.op == "-":
-            return pi.Sub(ast.e1, ast.e2)        
+            return pi.Sub(ast.e1, ast.e2)
+        elif ast.op == "%":
+            return pi.Concat(ast.e1, ast.e2)        
         elif ast.op == "*":
             return pi.Mul(ast.e1, ast.e2)        
         elif ast.op == "/":

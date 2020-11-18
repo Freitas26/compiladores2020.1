@@ -1,0 +1,25 @@
+var lista = [3, 1, 5, 4];
+var lista_vazia = [];
+const lista_constante = [7, 8, 9];
+print(lista); 
+
+print(lista_vazia); 
+
+## Comentário agora é definido dessa forma -> ##
+##para dar suporte ao tamanho utilizar o # unitario
+print( #lista);       
+
+lista := lista ++ lista_constante;
+print(lista);      
+
+lista := lista % 23;
+print(lista);           
+
+lista := lista ++ lista_vazia;
+print(lista);     
+
+lista := lista ++ [4,2,0];
+print(lista);          
+
+print(lista[4])       
+

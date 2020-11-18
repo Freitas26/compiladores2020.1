@@ -1,6 +1,5 @@
 @@grammar::IMP
-@@eol_comments :: /#.*?$/
-
+@@eol_comments :: /##.*?$/
 @@keyword :: 'and'
 @@keyword :: 'not'
 @@keyword :: 'or'
@@ -25,14 +24,21 @@
 @@keyword :: 'print'
 
 start = [ds:decSeq] [cs:cmd_seq] $ ;
+exp =  bin_exp | array_index | append | paren_exp | un_exp | array_int | @:atom ;
 
-exp = paren_exp | bin_exp | un_exp | @:atom ;
+array_int = "[" ','%{ e:exp }* "]" ;
+
+array_index = idn:identifier"["e:exp"]" ;
+
+array_assign = idn:identifier"["idx:exp"]" op:":=" e:exp ;
+
+append = l1:exp "++" l2:exp ;
 
 paren_exp = "(" e:exp ")" ;
 
-bin_exp = e1:exp op:binop e2:exp ;
+bin_exp = l:array_int op:binop e:exp | e1:exp op:binop e2:exp ;
 
-un_exp = op:"not" e:exp ;
+un_exp = op:"#"  e:exp  | op:"not" e:exp ;
 
 atom = @:num_atom  | @:truth_atom | @:id_atom ;
 
@@ -42,11 +48,11 @@ truth_atom = truth ;
 
 id_atom = identifier ;
 
-binop = "and"| "or" | "==" | "<=" | ">=" | "<" | ">"  | "+" | "-" | "*" | "/"  ; 
+binop =  "and"| "or" | "==" | "<=" | ">=" | "<" | ">"  | "%" |"+" | "-" | "*" | "/"  ;
 
 truth = 'True' | 'False' ;
 
-# This makes sure that an identifier does not match a keyword.
+## This makes sure that an identifier does not match a keyword.
 @name
 identifier = /(?!\d)\w+/ ;
 
@@ -56,7 +62,7 @@ blk = "{" ds:decSeq cs:cmd_seq "}" ;
 
 cmd_seq = ";"%{ac:atom_cmd}+ ;
 
-atom_cmd = cond | loop | assign | print | call | skip ;
+atom_cmd = cond | loop | array_assign | assign | print | call | skip ;
 
 skip = "skip" ;
 
