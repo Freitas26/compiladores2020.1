@@ -641,13 +641,13 @@ class ExpPiAut(PiAutomaton):
         idx = c.operand(1)
         e = c.operand(2)
         self.pushVal(idn.id())
-        self.pushVal(idx)
         self.pushCnt(ExpKW.LASG)
+        self.pushCnt(idx)
         self.pushCnt(e)
 
     def __evalArrAssignKW(self):
-        v = self.popVal()
         idx = self.popVal()
+        v = self.popVal()
         idn = self.popVal()
         l = self.getBindable(idn)
         sto = self.sto()
