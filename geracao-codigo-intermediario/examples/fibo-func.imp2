@@ -1,0 +1,18 @@
+var list_resp = [0];
+var antigo = 0, recente = 0, i = 2;
+
+def fibo (x) {
+    if (x >= 2){
+        list_resp := list_resp % 1
+    };
+    while (i < x){
+        recente := list_resp[i - 1];
+        antigo := list_resp[i - 2];
+        list_resp := list_resp % antigo + recente;
+        i := i + 1
+    };
+    return list_resp
+}
+
+a := fibo(10);
+print (a)

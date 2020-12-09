@@ -1,0 +1,13 @@
+var resp = 1, out = 1, cont=1; 
+
+def factorial (y) {
+   while (cont <= y){
+       resp := resp * cont;
+       cont := cont + 1
+   };
+   return resp
+}
+
+out := factorial(10);
+print(out)
+
