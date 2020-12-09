@@ -69,6 +69,9 @@ class Impiler(object):
     def assign(self, ast):
         return pi.Assign(ast.idn, ast.e)
 
+    def return_function(self, ast):
+        return pi.Return(ast.e)
+
     def print(self, ast):
         return pi.Print(ast.e)
     
