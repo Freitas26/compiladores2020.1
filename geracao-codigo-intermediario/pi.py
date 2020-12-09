@@ -231,8 +231,8 @@ class Sub(ArithExp):
 
 class Mul(ArithExp):
     def __init__(self, e1, e2):
-        if isinstance(e1, Exp):
-            if isinstance(e2, Exp):
+        if isinstance(e1, Exp) or isinstance(e1, Call):
+            if isinstance(e2, Exp) or isinstance(e2, Call):
                 ArithExp.__init__(self, e1, e2)
             else:
                 raise IllFormed(self, e2)
@@ -771,6 +771,17 @@ class Print(Cmd):
     def exp(self):
         return self.operand(0)
 
+class Return(Cmd):
+
+    def __init__(self, e):
+        if isinstance(e, Exp) or  isinstance(e, ArrInt) :
+            Cmd.__init__(self, e)
+        else:
+            raise IllFormed(self, e)
+
+    def exp(self):
+        return self.operand(0)
+
 class ArrAssign(Cmd):
     def __init__(self, idn, idx, e):
         if isinstance(idn, Id):
@@ -788,7 +799,7 @@ class Assign(Cmd):
 
     def __init__(self, i, e):
         if isinstance(i, Id):
-            if isinstance(e, Exp) or isinstance(e, ArrInt):
+            if isinstance(e, Exp) or isinstance(e, ArrInt) or isinstance(e, Call):
                 Cmd.__init__(self, i, e)
             else:
                 raise IllFormed(self, e)
@@ -875,6 +886,7 @@ class CmdKW:
     LOOP   = "#LOOP"
     COND   = "#COND"
     PRINT  = "#PRINT"
+    RETURN = "#RTRN"
 
 class CmdPiAut(ExpPiAut):
 
@@ -933,6 +945,33 @@ class CmdPiAut(ExpPiAut):
         v = self.popVal()
         self.__emmit(v)
 
+    def __evalReturn(self, c):
+        e = c.exp()
+        self.pushCnt(CmdKW.RETURN)
+        self.pushCnt(e)
+
+    def __evalReturnKW(self):
+        return_val = self.popVal()
+        env = self.popVal()
+        check_val = self.popVal()
+        save_dict = None
+        while isinstance(check_val, list) or isinstance(check_val, dict):
+            if isinstance(check_val, dict):
+                save_dict = check_val
+            check_val = self.popVal()
+        locs = check_val
+        self['env']=save_dict
+        self.pushVal(env)
+        self.pushVal(locs)
+        self.pushVal(return_val)
+        check_cnt = self.popCnt()
+        while check_cnt != DecCmdKW.BLKCMD:
+            check_cnt = self.popCnt()
+        while check_cnt == DecCmdKW.BLKCMD:
+            check_cnt = self.popCnt()
+        self.pushCnt(check_cnt)
+
+
     def __evalAssign(self, c):
         i = c.lvalue()
         e = c.rvalue()
@@ -944,6 +983,7 @@ class CmdPiAut(ExpPiAut):
     def __evalAssignKW(self):
         v = self.popVal()
         i = self.popVal()
+
         l = self.getBindable(i)
         self.updateStore(l, v)
 
@@ -1004,6 +1044,10 @@ class CmdPiAut(ExpPiAut):
             self.__evalPrint(c)
         elif c == CmdKW.PRINT:
             self.__evalPrintKW()
+        elif isinstance(c, Return):
+            self.__evalReturn(c)
+        elif c == CmdKW.RETURN:
+            self.__evalReturnKW()
         elif isinstance(c, Assign):
             self.__evalAssign(c)
         elif c == CmdKW.ASSIGN:
@@ -1097,7 +1141,7 @@ class Blk(Cmd):
                raise IllFormed(self, d)
         # Blocks with no declarations
         elif len(args) == 1:
-            c = args[0] 
+            c = args[0]
             if isinstance(c, Cmd):
                 Cmd.__init__(self, c)
             else:
@@ -1243,7 +1287,8 @@ class DecPiAut(CmdPiAut):
         self["sto"] = s
         # Retrieves the locations prior to the start of the execution of the block.
         ls = self.popVal()
-        self["locs"] = ls            
+        self["locs"] = ls    
+               
 
     def eval(self):
         d = self.popCnt()
